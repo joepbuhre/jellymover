@@ -10,7 +10,7 @@ class Globals:
 
 class JellyfinClient:
     
-    def __init__(self, SERVER_URL = None, API_KEY = None, FROM_REPLACE = None, TO_REPLACE = None, ARCHIVE_PATH = None):
+    def __init__(self, SERVER_URL = None, API_KEY = None, FROM_REPLACE = None, TO_REPLACE = None, ARCHIVE_PATH = None, DRY_RUN = None):
         # Load Dotenv 
         load_dotenv()
 
@@ -21,20 +21,21 @@ class JellyfinClient:
         ARCHIVE_PATH = self.__getenv('ARCHIVE_PATH', ARCHIVE_PATH)
 
         self.log = get_logger()
+        
+        self.log.info('Started jellymover')
 
-        self.log.info('test')
-
-        if SERVER_URL == None: raise NameError('SERVER_URL variable not found')
-        if API_KEY == None: raise NameError('API_KEY variable not found')
-        if FROM_REPLACE == None: raise NameError('FROM_REPLACE variable not found')
-        if TO_REPLACE == None: raise NameError('TO_REPLACE variable not found')
-        if ARCHIVE_PATH == None: raise NameError('ARCHIVE_PATH variable not found')
+        if SERVER_URL == None: self.log.error('SERVER_URL variable not found'); exit()
+        if API_KEY == None: self.log.error('API_KEY variable not found'); exit()
+        if FROM_REPLACE == None: self.log.error('FROM_REPLACE variable not found'); exit()
+        if TO_REPLACE == None: self.log.error('TO_REPLACE variable not found'); exit()
+        if ARCHIVE_PATH == None: self.log.error('ARCHIVE_PATH variable not found'); exit()
 
         self.SERVER_URL = SERVER_URL
         self.API_KEY = API_KEY
         self.FROM_REPLACE = FROM_REPLACE
         self.TO_REPLACE = TO_REPLACE
         self.ARCHIVE_PATH = ARCHIVE_PATH
+        self.DRY_RUN = bool(self.__getenv('DRY_RUN', False))
     
     def __getenv(self, var, alternate):
         return os.getenv(f"{Globals.ENV_PREFIX}_{var}", alternate)
@@ -42,9 +43,11 @@ class JellyfinClient:
     
     def set_user(self, userid: str):
         """
-        For a lot of Jellyfin endpoint we need to set the user id to get the items. Specifically for getting watched items
+        For a lot of Jellyfin endpoint we need to set the user id to get the items. Specifically for getting watched items.
+        However, we can change this one if that's necessary
         """
-        self.userid = userid
+        if self.__getenv('USERID', userid) == None: self.log.error('Userid variable not found'); exit()
+        self.userid = self.__getenv('USERID', userid)
 
     def __api(self, method, path, params = {}, **kwargs) -> Response:
         """
@@ -80,37 +83,58 @@ class JellyfinClient:
             'sortBy': 'DatePlayed',
         })
 
-        movies = filter(lambda obj: obj['Type'] == 'Movie', res.json()['Items'])
+        media = res.json()['Items']
         
-        for (i, obj) in enumerate(movies):
+        for (i, obj) in enumerate(media):
 
             item = self.get_item(obj['Id'])
-            
-            self.log.debug(f'Currently at item [{obj["Name"]}], [{item["Id"]}]')
-
-            src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
-            
-            self.log.debug(item['Path'])
-
-            path, file = os.path.split(src_path)
-
-            to_move = os.path.join(path, os.path.splitext(file)[0])
-
-            self.log.debug(to_move)
-
-            # Rsync command
-            rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include '{to_move}*' '{path}' {self.ARCHIVE_PATH}"
-            self.log.info(rsync_cmd)
-
-            if os.path.exists(src_path):
-                self.log.debug("Path found, moving now")
-
-                # Run only when dry run is false
-                if bool(self.__getenv('DRY_RUN', False)) == False:
-                    os.system(rsync_cmd)
 
             if 'Archived' not in item['Tags']: 
-                item['Tags'].append('Archived')
+                
+                self.log.info(f'Currently at item [{obj["Name"]}], [{item["Id"]}]')
+
+                src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
+                
+                # self.log.debug(item['Path'])
+
+                path, file = os.path.split(src_path)
+
+                to_move = os.path.join(path, os.path.splitext(file)[0])
+
+                # self.log.debug(to_move)
+
+                # Rsync command
+                rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include '{to_move}*' '{path}' {self.ARCHIVE_PATH}"
+                self.log.debug(rsync_cmd)
+
+                if os.path.exists(src_path):
+                    # Run only when dry run is false
+                    if self.DRY_RUN == False:
+                        os.system(rsync_cmd)
+
+                        # We're done, adding the Tag archived :D
+                        item['Tags'].append('Archived')
+                        self.update_item(item)
+
+    def reset(self):
+        res = self.__api('GET', '/Items', {
+            'userId': self.userid,
+            'recursive': 'true',
+            'tags': 'Archived'
+        })
+
+        # media = filter(lambda obj: obj['Type'] == 'Movie', res.json()['Items'])
+        media = res.json()['Items']
+
+        self.log.info(f'Unarchiving {len(media)} item(s)')
+
+        for (i, obj) in enumerate(media):
+
+            item = self.get_item(obj['Id'])
+            self.log.debug(f'Currently resetting item [{obj["Name"]}], [{item["Id"]}]')
+
+            if 'Archived' in item['Tags']:
+                item['Tags'].remove('Archived')
                 self.update_item(item)
-            else:
-                self.log.debug('Already archived')
+        
+        self.log.info('Unarchiving done')

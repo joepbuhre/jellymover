@@ -6,17 +6,36 @@ import logging
 import argparse
 
 # Create an ArgumentParser object
-parser = argparse.ArgumentParser(description='Example argument parser')
+parser = argparse.ArgumentParser(description='Jellymover. Automatically archive seen episodes / movies')
 
 # Add arguments to the parser
-parser.add_argument('-u', '--userid', required=True, help='Input UserID')
-# parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction, default=False, help='Enable verbose mode')
+parser.add_argument('-u', '--userid', default=None, help='Input UserID')
+parser.add_argument('-a', '--apikey', default=None, help='Put in Jellyfin api key')
+parser.add_argument('-s', '--serverurl', default=None, help='Put in the Jellyfin server url')
+parser.add_argument('-f', '--from-replace', default="", help="If you need to replace, specify from Path")
+parser.add_argument('-t', '--to-replace', default="", help="If you need to replace, specify to path")
+parser.add_argument('-d', '--dry-run', action=argparse.BooleanOptionalAction, default=False, help="Enable Dry run mode (don't actually move)")
+parser.add_argument('-p', '--archive-path', default=None, help="Specify path which it needs to be archived to")
+parser.add_argument('-l', '--log-level', default='INFO', help='Put in the logging level')
+parser.add_argument('--reset', action=argparse.BooleanOptionalAction, default=False, help="Reset all items of the Archive tag")
 
 # Parse the command-line arguments
 args = parser.parse_args()
 
-client = Client.JellyfinClient()
+client = Client.JellyfinClient(
+    SERVER_URL=args.serverurl,
+    API_KEY=args.apikey,
+    FROM_REPLACE=args.from_replace,
+    TO_REPLACE=args.to_replace,
+    ARCHIVE_PATH=args.archive_path,
+    DRY_RUN=args.dry_run,
+)
 
 client.set_user(args.userid)
 
-client.move_items()
+if args.archive_path != None:
+    client.move_items()
+
+
+if args.archive_path == None and args.reset == True:
+    client.reset()
