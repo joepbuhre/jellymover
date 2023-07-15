@@ -50,7 +50,6 @@ class JellyfinClient:
         """
         API wrapper
         """
-        # url = "https://jf.vicinusvetus.nl/Items?userId=d9871f7d73ff45e797770cf6436c397b&filters=IsPlayed&recursive=true&sortBy=DatePlayed"
         url = f"{self.SERVER_URL}{path}"
         headers = {
           'Accept': 'application/json',
@@ -79,7 +78,6 @@ class JellyfinClient:
             'filters': 'IsPlayed',
             'recursive': 'true',
             'sortBy': 'DatePlayed',
-            'nameStartsWith': 'Ghosted'
         })
 
         movies = filter(lambda obj: obj['Type'] == 'Movie', res.json()['Items'])
@@ -90,7 +88,7 @@ class JellyfinClient:
             
             self.log.debug(f'Currently at item [{obj["Name"]}], [{item["Id"]}]')
 
-            src_path = str(item['Path']).replace('/media', '/srv/ssd1/.')
+            src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
             
             self.log.debug(item['Path'])
 
@@ -101,11 +99,11 @@ class JellyfinClient:
             self.log.debug(to_move)
 
             # Rsync command
-            rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include '{to_move}*' '{path}' /srv/hdd1"
+            rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include '{to_move}*' '{path}' {self.ARCHIVE_PATH}"
+            self.log.info(rsync_cmd)
 
             if os.path.exists(src_path):
                 self.log.debug("Path found, moving now")
-                self.log.info(rsync_cmd)
 
                 # Run only when dry run is false
                 if bool(self.__getenv('DRY_RUN', False)) == False:
@@ -116,31 +114,3 @@ class JellyfinClient:
                 self.update_item(item)
             else:
                 self.log.debug('Already archived')
-
-
-
-
-
-
-# payload = {}
-
-# response = requests.request("GET", url, headers=headers, data=payload)
-
-# data = response.json()['Items']
-
-# movies = filter(lambda obj: obj['Type'] == 'Movie', data)
-
-# for (i, obj) in enumerate(movies):
-#     print(f'Currently at item [{obj["Name"]}]')
-
-
-
-    # url = f"https://jf.vicinusvetus.nl/Users/d9871f7d73ff45e797770cf6436c397b/Items/{obj['Id']}"
-
-    # req2 = requests.request("GET", url, headers=headers)
-
-
-    # print(req2.json()['Path'])
-    # print("")
-
-    # print(os.path.exists(req2.json()['Path']))
