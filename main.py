@@ -3,37 +3,20 @@ import os
 from JellyFin import Client
 import logging
 
+import argparse
+
+# Create an ArgumentParser object
+parser = argparse.ArgumentParser(description='Example argument parser')
+
+# Add arguments to the parser
+parser.add_argument('-u', '--userid', required=True, help='Input UserID')
+# parser.add_argument('-v', '--verbose', action=argparse.BooleanOptionalAction, default=False, help='Enable verbose mode')
+
+# Parse the command-line arguments
+args = parser.parse_args()
+
 client = Client.JellyfinClient()
 
-client.set_user("d9871f7d73ff45e797770cf6436c397b")
+client.set_user(args.userid)
 
-client.get_played()
-
-# url = "https://jf.vicinusvetus.nl/Items?userId=d9871f7d73ff45e797770cf6436c397b&filters=IsPlayed&recursive=true&sortBy=DatePlayed"
-
-# payload = {}
-# headers = {
-#   'Accept': 'application/json',
-#   'Authorization': 'MediaBrowser Token="73d32c0da8714673904793326880348b"'
-# }
-
-# response = requests.request("GET", url, headers=headers, data=payload)
-
-# data = response.json()['Items']
-
-# movies = filter(lambda obj: obj['Type'] == 'Movie', data)
-
-# for (i, obj) in enumerate(movies):
-#     print(f'Currently at item [{obj["Name"]}]')
-
-
-
-#     url = f"https://jf.vicinusvetus.nl/Users/d9871f7d73ff45e797770cf6436c397b/Items/{obj['Id']}"
-
-#     req2 = requests.request("GET", url, headers=headers)
-
-
-#     print(req2.json()['Path'])
-#     print("")
-
-#     print(os.path.exists(req2.json()['Path']))
+client.move_items()

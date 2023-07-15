@@ -73,7 +73,7 @@ class JellyfinClient:
         res = self.__api('POST', f'/Items/{obj["Id"]}', data=json.dumps(obj))
         return res
 
-    def get_played(self):
+    def move_items(self):
         res = self.__api('GET', '/Items', {
             'userId': self.userid,
             'filters': 'IsPlayed',
