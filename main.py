@@ -41,6 +41,9 @@ try:
         args=args
     )
 
+    if args.userid == None and client.get_user() != None:
+        args.userid = [client.get_user()]
+
     if args.userid == None:
         client.log.critical("Userid has not been set!")
 

@@ -81,6 +81,12 @@ class JellyfinClient:
                     return True
         return False
 
+    def get_user(self):
+        """
+        Sometimes you set the userid in env variables this is the way to fetch them
+        """
+        return self.__getenv('userid', None)
+
     def set_user(self, userid: str):
         """
         For a lot of Jellyfin endpoint we need to set the user id to get the items. Specifically for getting watched items.
@@ -96,11 +102,12 @@ class JellyfinClient:
             # e: {'message': str, 'response': Response} = e.args[0]
             err: ErrorResponse = e.args[0]
             resp = err['response']
-            
             if resp.status_code == 400:
                 self.log.critical('Bad request: %s', resp.text)
             elif resp.status_code == 404:
                 self.log.critical('User not found: %s', resp.text)
+            elif resp.status_code == 401:
+                self.log.critical(err['message'])
             else:
                 self.log.critical('Unkown error has occured %s', resp.text)   
 
