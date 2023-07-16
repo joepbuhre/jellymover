@@ -31,7 +31,7 @@ class JellyfinClient:
         if API_KEY == None: self.log.critical('API_KEY variable not found')
         if FROM_REPLACE == None: self.log.warning('FROM_REPLACE variable not found')
         if TO_REPLACE == None: self.log.warning('TO_REPLACE variable not found')
-        if ARCHIVE_PATH == None: self.log.critical('ARCHIVE_PATH variable not found')
+        if ARCHIVE_PATH == None and args.reset == False: self.log.critical('ARCHIVE_PATH variable not found')
 
         self.SERVER_URL = SERVER_URL
         self.API_KEY = API_KEY
