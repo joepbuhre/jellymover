@@ -29,17 +29,21 @@ This application is also available with docker. This is also the preference.
 
 ## Command-Line Options
 
-| Option         | Description                                               |
-| -------------- | --------------------------------------------------------- |
-| `-u`, `--userid` | Input UserID                                             |
-| `-a`, `--apikey` | Set Jellyfin API key                                     |
-| `-s`, `--serverurl` | Set the Jellyfin server URL                             |
-| `-f`, `--from-replace` | Specify the "from" path for replacement                |
-| `-t`, `--to-replace` | Specify the "to" path for replacement                    |
-| `-d`, `--dry-run` | Enable dry run mode (do not actually move items)         |
-| `-p`, `--archive-path` | Specify the path to which items should be archived     |
-| `-l`, `--log-level` | Set the logging level                                    |
-| `--reset` | Reset all items of the Archive tag                        |
+| Option                    | Description                                                    |
+| --------------            | ---------------------------------------------------------      |
+| `-u`, `--userid`          | Input UserID                                                   |
+| `-a`, `--apikey`          | Set Jellyfin API key                                           |
+| `-s`, `--serverurl`       | Set the Jellyfin server URL                                    |
+| `-f`, `--from-replace`    | Specify the "from" path for replacement                        |
+| `-t`, `--to-replace`      | Specify the "to" path for replacement                          |
+| `-d`, `--dry-run`         | Enable dry run mode (do not actually move items)               |
+| `-p`, `--archive-path`    | Specify the path to which items should be archived             |
+| `--exclude`               | Set (multiple) excludes (Regex enabled)                        |
+| `--exclude-file`          | Specify a newline delimited file with regex based excludes     |
+| `--exclude`               | Set (multiple) includes (Regex enabled)                        |
+| `--exclude-file`          | Specify a newline delimited file with regex based excludes     |
+| `--limit`                 | Set the limit of updates                                       |
+| `--reset`                 | Reset all items of the Archive tag                             |
 
 ## Examples
 
