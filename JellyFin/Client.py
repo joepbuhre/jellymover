@@ -171,12 +171,12 @@ class JellyfinClient:
             filter(filter_media, media)
         )
         
+        cnt = 0
         for (i, obj) in enumerate(media):
             item = self.get_item(obj['Id'])
 
             if 'Archived' not in item['Tags']:
                 
-
                 # Display series name if running
                 seriesname = f"series [{item['SeriesName']}]," if 'SeriesName' in item else ''
 
@@ -203,8 +203,10 @@ class JellyfinClient:
                 else:
                     self.log.debug('Dry run enabled, skipping...')
                 
-                if self.args.limit != 0 and (i + 1) >= self.args.limit:
+                cnt = cnt + 1
+                if self.args.limit != 0 and i >= self.args.limit:
                     break
+                
 
         self.log.info('All done')
 
