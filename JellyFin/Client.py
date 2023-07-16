@@ -204,7 +204,7 @@ class JellyfinClient:
                     self.log.debug('Dry run enabled, skipping...')
                 
                 cnt = cnt + 1
-                if self.args.limit != 0 and i >= self.args.limit:
+                if self.args.limit != 0 and cnt >= self.args.limit:
                     break
                 
 
