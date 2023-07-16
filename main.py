@@ -9,7 +9,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Jellymover. Automatically archive seen episodes / movies')
 
 # Add arguments to the parser
-parser.add_argument('-u', '--userid', default=None, help='Input UserID')
+parser.add_argument('-u', '--userid',nargs='+', default=None, help='Input UserID')
 parser.add_argument('-a', '--apikey', default=None, help='Put in Jellyfin api key')
 parser.add_argument('-s', '--serverurl', default=None, help='Put in the Jellyfin server url')
 parser.add_argument('-f', '--from-replace', default="", help="If you need to replace, specify from Path")
@@ -20,22 +20,31 @@ parser.add_argument('-l', '--log-level', default='INFO', help='Put in the loggin
 parser.add_argument('--reset', action=argparse.BooleanOptionalAction, default=False, help="Reset all items of the Archive tag")
 
 # Parse the command-line arguments
-args = parser.parse_args()
+try:
+    args = parser.parse_args()
 
-client = Client.JellyfinClient(
-    SERVER_URL=args.serverurl,
-    API_KEY=args.apikey,
-    FROM_REPLACE=args.from_replace,
-    TO_REPLACE=args.to_replace,
-    ARCHIVE_PATH=args.archive_path,
-    DRY_RUN=args.dry_run,
-)
+    client = Client.JellyfinClient(
+        SERVER_URL=args.serverurl,
+        API_KEY=args.apikey,
+        FROM_REPLACE=args.from_replace,
+        TO_REPLACE=args.to_replace,
+        ARCHIVE_PATH=args.archive_path,
+        DRY_RUN=args.dry_run,
+        LOG_LEVEL=args.log_level
+    )
 
-client.set_user(args.userid)
+    if args.userid == None:
+        client.log.critical("Userid has not been set!")
 
-if args.archive_path != None:
-    client.move_items()
+    for userid in args.userid:
+        client.set_user(userid)
 
+        if args.archive_path != None:
+            client.move_items()
+        elif args.archive_path == None and args.reset == True:
+            client.reset()
+        else:
+            parser.print_help()
 
-if args.archive_path == None and args.reset == True:
-    client.reset()
+except KeyboardInterrupt as e:
+    client.log.critical("Run has been cancelled by user")

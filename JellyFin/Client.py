@@ -1,7 +1,11 @@
+import logging
 import os
 #import Globals
 from dotenv import load_dotenv
 from requests import Response, request
+
+from JellyFin.Types import ErrorResponse
+# from JellyFin.Types import ErrorResponse
 from .Log import get_logger
 import json 
 
@@ -10,7 +14,7 @@ class Globals:
 
 class JellyfinClient:
     
-    def __init__(self, SERVER_URL = None, API_KEY = None, FROM_REPLACE = None, TO_REPLACE = None, ARCHIVE_PATH = None, DRY_RUN = None):
+    def __init__(self, SERVER_URL = None, API_KEY = None, FROM_REPLACE = "", TO_REPLACE = "", ARCHIVE_PATH = None, DRY_RUN = None, LOG_LEVEL = logging.INFO):
         # Load Dotenv 
         load_dotenv()
 
@@ -20,15 +24,15 @@ class JellyfinClient:
         TO_REPLACE = self.__getenv('TO_REPLACE', TO_REPLACE)
         ARCHIVE_PATH = self.__getenv('ARCHIVE_PATH', ARCHIVE_PATH)
 
-        self.log = get_logger()
+        self.log = get_logger(LOG_LEVEL)
         
         self.log.info('Started jellymover')
 
-        if SERVER_URL == None: self.log.error('SERVER_URL variable not found'); exit()
-        if API_KEY == None: self.log.error('API_KEY variable not found'); exit()
-        if FROM_REPLACE == None: self.log.error('FROM_REPLACE variable not found'); exit()
-        if TO_REPLACE == None: self.log.error('TO_REPLACE variable not found'); exit()
-        if ARCHIVE_PATH == None: self.log.error('ARCHIVE_PATH variable not found'); exit()
+        if SERVER_URL == None: self.log.critical('SERVER_URL variable not found')
+        if API_KEY == None: self.log.critical('API_KEY variable not found')
+        if FROM_REPLACE == None: self.log.warning('FROM_REPLACE variable not found')
+        if TO_REPLACE == None: self.log.warning('TO_REPLACE variable not found')
+        if ARCHIVE_PATH == None: self.log.critical('ARCHIVE_PATH variable not found')
 
         self.SERVER_URL = SERVER_URL
         self.API_KEY = API_KEY
@@ -37,8 +41,11 @@ class JellyfinClient:
         self.ARCHIVE_PATH = ARCHIVE_PATH
         self.DRY_RUN = bool(self.__getenv('DRY_RUN', False))
     
-    def __getenv(self, var, alternate):
-        return os.getenv(f"{Globals.ENV_PREFIX}_{var}", alternate)
+    def __getenv(self, var, primary):
+        if primary != None:
+            return primary
+        else:
+            return os.getenv(f"{Globals.ENV_PREFIX}_{var}", None)
 
     
     def set_user(self, userid: str):
@@ -46,8 +53,30 @@ class JellyfinClient:
         For a lot of Jellyfin endpoint we need to set the user id to get the items. Specifically for getting watched items.
         However, we can change this one if that's necessary
         """
-        if self.__getenv('USERID', userid) == None: self.log.error('Userid variable not found'); exit()
-        self.userid = self.__getenv('USERID', userid)
+        userid = self.__getenv('USERID', userid)
+        if userid == None: self.log.critical('Userid variable not found')
+
+        # Check if user exists
+        try:
+            res = self.__api('GET', f'/Users/{userid}')
+        except ConnectionError as e:
+            # e: {'message': str, 'response': Response} = e.args[0]
+            err: ErrorResponse = e.args[0]
+            resp = err['response']
+            
+            if resp.status_code == 400:
+                self.log.critical('Bad request: %s', resp.text)
+            elif resp.status_code == 404:
+                self.log.critical('User not found: %s', resp.text)
+            else:
+                self.log.critical('Unkown error has occured %s', resp.text)   
+
+
+        if res.status_code > 299:
+            print('hi')
+            self.log.error('User has not been found, please check. Response: %s',res.text )
+        
+        self.userid = userid
 
     def __api(self, method, path, params = {}, **kwargs) -> Response:
         """
@@ -63,7 +92,10 @@ class JellyfinClient:
         res = request(method, url, headers=headers, params=params, **kwargs)
 
         if res.status_code > 299:
-            raise ConnectionError(f'Error with status code [{res.status_code}]')
+            raise ConnectionError({
+                'message': f'Error with status code [{res.status_code}]',
+                'response': res
+            })
         else:
             return res
 
@@ -91,7 +123,10 @@ class JellyfinClient:
 
             if 'Archived' not in item['Tags']: 
                 
-                self.log.info(f'Currently at item [{obj["Name"]}], [{item["Id"]}]')
+                # Display series name if running
+                seriesname = f"series [{item['SeriesName']}]," if 'SeriesName' in item else ''
+
+                self.log.info(f'Currently at {seriesname} item [{obj["Name"]}], [{item["Id"]}]')
 
                 src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
                 
@@ -107,14 +142,16 @@ class JellyfinClient:
                 rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include '{to_move}*' '{path}' {self.ARCHIVE_PATH}"
                 self.log.debug(rsync_cmd)
 
-                if os.path.exists(src_path):
                     # Run only when dry run is false
-                    if self.DRY_RUN == False:
+                if self.DRY_RUN == False:
+                    if os.path.exists(src_path):
                         os.system(rsync_cmd)
 
-                        # We're done, adding the Tag archived :D
-                        item['Tags'].append('Archived')
-                        self.update_item(item)
+                    # We're done, adding the Tag archived :D
+                    item['Tags'].append('Archived')
+                    self.update_item(item)
+                else:
+                    self.log.debug('Dry run enabled, skipping...')
 
     def reset(self):
         res = self.__api('GET', '/Items', {
