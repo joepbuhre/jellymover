@@ -21,7 +21,7 @@ parser.add_argument('--exclude', nargs='+', help="Input names you want to exclud
 parser.add_argument('--exclude-file', help="Same as `--exclude` but newline delimited")
 parser.add_argument('--include', nargs='+', help="Input names you want to include. Searches in Name (EpisodeName & MovieName), SeriesName")
 parser.add_argument('--include-file', help="Same as `--include` but newline delimited")
-parser.add_argument('--limit', default=0, help="If you want to limit the amount of updates")
+parser.add_argument('--limit', type=int, default=0, help="If you want to limit the amount of updates")
 parser.add_argument('--reset', action=argparse.BooleanOptionalAction, default=False, help="Reset all items of the Archive tag")
 
 

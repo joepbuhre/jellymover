@@ -39,7 +39,7 @@ class JellyfinClient:
         self.TO_REPLACE = TO_REPLACE
         self.ARCHIVE_PATH = ARCHIVE_PATH
         self.DRY_RUN = bool(self.__getenv('DRY_RUN', DRY_RUN))
-
+        self.args = args
         self.__handle_filter(args)
 
     
@@ -167,15 +167,13 @@ class JellyfinClient:
         for (i, obj) in enumerate(media):
             item = self.get_item(obj['Id'])
 
-            self.log.debug(item['Name'])
-            self.log.debug(item['SeriesName'])
             if 'Archived' not in item['Tags']:
                 
 
                 # Display series name if running
                 seriesname = f"series [{item['SeriesName']}]," if 'SeriesName' in item else ''
 
-                self.log.info(f'Currently at {seriesname} item [{obj["Name"]}], [{item["Id"]}]')
+                self.log.info(f'Currently at {seriesname} item [{obj["Name"]}] ({i} of {len(media)})')
 
                 src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
                 
@@ -197,6 +195,11 @@ class JellyfinClient:
                     self.update_item(item)
                 else:
                     self.log.debug('Dry run enabled, skipping...')
+                
+                if self.args.limit != 0 and i > self.args.limit:
+                    break
+
+        self.log.info('All done')
 
     def reset(self):
         res = self.__api('GET', '/Items', {
