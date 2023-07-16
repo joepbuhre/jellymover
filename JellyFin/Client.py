@@ -1,11 +1,10 @@
+from argparse import Namespace
 import logging
 import os
-#import Globals
+import re
 from dotenv import load_dotenv
 from requests import Response, request
-
 from JellyFin.Types import ErrorResponse
-# from JellyFin.Types import ErrorResponse
 from .Log import get_logger
 import json 
 
@@ -14,7 +13,7 @@ class Globals:
 
 class JellyfinClient:
     
-    def __init__(self, SERVER_URL = None, API_KEY = None, FROM_REPLACE = "", TO_REPLACE = "", ARCHIVE_PATH = None, DRY_RUN = None, LOG_LEVEL = logging.INFO):
+    def __init__(self, SERVER_URL = None, API_KEY = None, FROM_REPLACE = "", TO_REPLACE = "", ARCHIVE_PATH = None, DRY_RUN = None, LOG_LEVEL = logging.INFO, args: Namespace = None):
         # Load Dotenv 
         load_dotenv()
 
@@ -39,7 +38,10 @@ class JellyfinClient:
         self.FROM_REPLACE = FROM_REPLACE
         self.TO_REPLACE = TO_REPLACE
         self.ARCHIVE_PATH = ARCHIVE_PATH
-        self.DRY_RUN = bool(self.__getenv('DRY_RUN', False))
+        self.DRY_RUN = bool(self.__getenv('DRY_RUN', DRY_RUN))
+
+        self.__handle_filter(args)
+
     
     def __getenv(self, var, primary):
         if primary != None:
@@ -47,7 +49,38 @@ class JellyfinClient:
         else:
             return os.getenv(f"{Globals.ENV_PREFIX}_{var}", None)
 
+    def __handle_filter(self, arg: Namespace):
+        exclude_list = set()
+        include_list = set()
+        
+        # Set excludes
+        if arg.exclude != None:
+            exclude_list.update(arg.exclude)
+        
+        if arg.exclude_file != None:
+            with open(arg.exclude_file, 'rt') as f:
+                exclude_file_list = list(filter(lambda l: l != "", f.read().splitlines()))
+                exclude_list.update(exclude_file_list)
+                
+        # Set includes
+        if arg.include != None:
+            include_list.update(arg.include)
+        
+        if arg.include_file != None:
+            with open(arg.include_file, 'rt') as f:
+                include_file_list = list(filter(lambda l: l != "", f.read().splitlines()))
+                include_list.update(include_file_list)
+        
+        self.exclude_list = exclude_list
+        self.include_list = include_list
     
+    def __regmatch_list(self, regex: list, values: list):
+        for reg in regex:
+            for value in values:
+                if re.match(reg, value, re.IGNORECASE):
+                    return True
+        return False
+
     def set_user(self, userid: str):
         """
         For a lot of Jellyfin endpoint we need to set the user id to get the items. Specifically for getting watched items.
@@ -116,13 +149,29 @@ class JellyfinClient:
         })
 
         media = res.json()['Items']
+
+        # Filter unneeded media
+        def filter_media(m):
+            lst = [m['Name']]
+            if 'SeriesName' in m: lst.append(m['SeriesName'])
+
+            exclude_result = True if len(self.exclude_list) == 0 else self.__regmatch_list(self.exclude_list, lst) == False
+            include_result = True if len(self.include_list ) == 0 else self.__regmatch_list(self.include_list, lst) == True
+
+            return (exclude_result and include_result)
+
+        media = list(
+            filter(filter_media, media)
+        )
         
         for (i, obj) in enumerate(media):
-
             item = self.get_item(obj['Id'])
 
-            if 'Archived' not in item['Tags']: 
+            self.log.debug(item['Name'])
+            self.log.debug(item['SeriesName'])
+            if 'Archived' not in item['Tags']:
                 
+
                 # Display series name if running
                 seriesname = f"series [{item['SeriesName']}]," if 'SeriesName' in item else ''
 
@@ -130,13 +179,9 @@ class JellyfinClient:
 
                 src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
                 
-                # self.log.debug(item['Path'])
-
                 path, file = os.path.split(src_path)
 
                 to_move = os.path.join(path, os.path.splitext(file)[0])
-
-                # self.log.debug(to_move)
 
                 # Rsync command
                 rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include '{to_move}*' '{path}' {self.ARCHIVE_PATH}"
@@ -160,7 +205,6 @@ class JellyfinClient:
             'tags': 'Archived'
         })
 
-        # media = filter(lambda obj: obj['Type'] == 'Movie', res.json()['Items'])
         media = res.json()['Items']
 
         self.log.info(f'Unarchiving {len(media)} item(s)')
