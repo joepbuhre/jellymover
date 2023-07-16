@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      VERSION: ${{ env.FRIDGY_VERSION }}
+      VERSION: ${{ env.JELLYMOVER_VERSION }}
 
     steps:
       - name: Checkout
@@ -40,8 +40,8 @@ jobs:
           author_name: Joep The Bot
           author_email: jcbuhre@gmail.com
           default_author: user_info 
-          message: "Version ${{ env.FRIDGY_VERSION }}"
-          tag: ${{ env.FRIDGY_VERSION }}
+          message: "Version ${{ env.JELLYMOVER_VERSION }}"
+          tag: ${{ env.JELLYMOVER_VERSION }}
           push: true
 
   prepare_release:

@@ -26,7 +26,7 @@ while getopts 's:m:' flag; do
   esac
 done
 
-CURRENT_SERVER=$(cat ./package.json | jq -r '.version')
+CURRENT_SERVER=$(cat ./version)
 MAJOR=$(echo $CURRENT_SERVER | cut -d '.' -f1)
 MINOR=$(echo $CURRENT_SERVER | cut -d '.' -f2)
 PATCH=$(echo $CURRENT_SERVER | cut -d '.' -f3)
@@ -55,7 +55,6 @@ fi
 
 echo $NEXT_SERVER
 
-sed -i "s/\"version\": \"$CURRENT_SERVER\"/\"version\": \"$NEXT_SERVER\"/g" ./package.json
-sed -i "s/^  \"version\": \"$CURRENT_SERVER\"/  \"version\": \"$NEXT_SERVER\"/g" ./package-lock.json
+echo $NEXT_SERVER > ./VERSION
 
-echo "FRIDGY_VERSION=v$NEXT_SERVER" >>$GITHUB_ENV
+echo "JELLYMOVER_VERSION=v$NEXT_SERVER" >>$GITHUB_ENV
