@@ -26,7 +26,7 @@ while getopts 's:m:' flag; do
   esac
 done
 
-CURRENT_SERVER=$(cat ./version)
+CURRENT_SERVER=$(cat ./VERSION)
 MAJOR=$(echo $CURRENT_SERVER | cut -d '.' -f1)
 MINOR=$(echo $CURRENT_SERVER | cut -d '.' -f2)
 PATCH=$(echo $CURRENT_SERVER | cut -d '.' -f3)
