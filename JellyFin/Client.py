@@ -186,10 +186,10 @@ class JellyfinClient:
                 
                 path, file = os.path.split(src_path)
 
-                to_move = os.path.join(path, os.path.splitext(file)[0])
+                to_move = os.path.splitext(file)[0]
 
                 # Rsync command
-                rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include '{to_move}*' '{path}' {self.ARCHIVE_PATH}"
+                rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include='*/' --include='*{to_move}*' --exclude='*' '{path}' {self.ARCHIVE_PATH}"
                 self.log.debug(rsync_cmd)
 
                     # Run only when dry run is false
