@@ -171,22 +171,18 @@ class JellyfinClient:
             filter(filter_media, media)
         )
         
-        # Log when there isn't anything do to!
-        if len(media) == 0:
-            self.log.debug(f"There isn't anything to do. Length of media = 0")
-        else:
-            self.log.debug(f"Archiving {len(media)} item(s)")
-
-        cnt = 0
+        # Set checked count so we know when to stop
+        cnt = 0 
+        self.log.info('Loaded & filtered items, now going to move items')
         for (i, obj) in enumerate(media):
             item = self.get_item(obj['Id'])
 
-            if 'Archived' not in item['Tags']:
-                
-                # Display series name if running
-                seriesname = f"series [{item['SeriesName']}]," if 'SeriesName' in item else ''
+            # Display series name if running
+            seriesname = f"series [{item['SeriesName']}], " if 'SeriesName' in item else ''
+            self.log.debug(f'Checking {seriesname}item [{obj["Name"]}] ({i} of {len(media)}) [isArchived: {"Archived" in item["Tags"]}]')
 
-                self.log.info(f'Currently at {seriesname} item [{obj["Name"]}] ({i} of {len(media)})')
+            if 'Archived' not in item['Tags']:
+                self.log.info(f'Moving {seriesname}item [{obj["Name"]}] ({cnt})')
 
                 src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
                 
@@ -212,9 +208,11 @@ class JellyfinClient:
                 cnt = cnt + 1
                 if self.args.limit != 0 and cnt >= self.args.limit:
                     break
-                
 
-        self.log.info('All done')
+        if i == 0:
+            self.log.info(f'0 items were moved. Total of {i + 1} item(s) were checked')                
+        
+        self.log.info(f'All done (Checked {i} items)')
 
     def reset(self):
         res = self.__api('GET', '/Items', {
