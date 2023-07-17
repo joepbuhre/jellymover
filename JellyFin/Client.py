@@ -200,9 +200,10 @@ class JellyfinClient:
                 if os.path.exists(src_path):
                     os.system(rsync_cmd)
 
-                # We're done, adding the Tag archived :D
-                item['Tags'].append('Archived')
-                self.update_item(item)
+                # We're done, adding the Tag archived :D. Getting the full item otherwise JF will overwrite or forget fields.
+                full_item = self.get_item(item['Id'])
+                full_item['Tags'].append('Archived')
+                self.update_item(full_item)
             else:
                 self.log.debug('Dry run enabled, skipping...')
             
