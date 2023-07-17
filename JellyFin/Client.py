@@ -209,8 +209,9 @@ class JellyfinClient:
             
             if self.args.limit != 0 and (i + 1) >= self.args.limit:
                 break
-
-        self.log.info(f'All done. [Moved {i + 1} items] [Checked {original_length} items]')
+        
+        # If len of media is zero, this means that i is not set thus return zero. Else return the iterator. 
+        self.log.info(f'All done. [Moved {0 if len(media) == 0 else i + 1} items] [Checked {original_length} items]')
 
     def reset(self):
         res = self.__api('GET', '/Items', {
