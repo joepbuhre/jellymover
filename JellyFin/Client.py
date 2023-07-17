@@ -153,12 +153,17 @@ class JellyfinClient:
             'filters': 'IsPlayed',
             'recursive': 'true',
             'sortBy': 'DatePlayed',
+            'fields': 'Tags,Path'
         })
 
         media = res.json()['Items']
 
         # Filter unneeded media
         def filter_media(m):
+            # If archived, exit early
+            if 'Archived' in m['Tags']:
+                return False
+            
             lst = [m['Name']]
             if 'SeriesName' in m: lst.append(m['SeriesName'])
 
@@ -167,52 +172,45 @@ class JellyfinClient:
 
             return (exclude_result and include_result)
 
+        original_length = len(media)
         media = list(
             filter(filter_media, media)
         )
         
         # Set checked count so we know when to stop
-        cnt = 0 
-        self.log.info('Loaded & filtered items, now going to move items')
-        for (i, obj) in enumerate(media):
-            item = self.get_item(obj['Id'])
+        self.log.info(f'Loaded & filtered items, {len(media)} items can be moved')
+        for (i, item) in enumerate(media):
 
             # Display series name if running
             seriesname = f"series [{item['SeriesName']}], " if 'SeriesName' in item else ''
-            self.log.debug(f'Checking {seriesname}item [{obj["Name"]}] ({i} of {len(media)}) [isArchived: {"Archived" in item["Tags"]}]')
+            self.log.info(f'Moving {seriesname}item [{item["Name"]}] ({i + 1} of {len(media)})')
 
-            if 'Archived' not in item['Tags']:
-                self.log.info(f'Moving {seriesname}item [{obj["Name"]}] ({cnt})')
+            src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
+            
+            path, file = os.path.split(src_path)
 
-                src_path = str(item['Path']).replace(self.FROM_REPLACE, self.TO_REPLACE)
-                
-                path, file = os.path.split(src_path)
+            to_move = os.path.splitext(file)[0]
 
-                to_move = os.path.splitext(file)[0]
+            # Rsync command
+            rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include='*/' --include='*{to_move}*' --exclude='*' '{path}' {self.ARCHIVE_PATH}"
+            self.log.debug(rsync_cmd)
 
-                # Rsync command
-                rsync_cmd = f"rsync --progress --remove-source-files -a --relative --include='*/' --include='*{to_move}*' --exclude='*' '{path}' {self.ARCHIVE_PATH}"
-                self.log.debug(rsync_cmd)
+                # Run only when dry run is false
+            if self.DRY_RUN == False:
+                if os.path.exists(src_path):
+                    os.system(rsync_cmd)
 
-                    # Run only when dry run is false
-                if self.DRY_RUN == False:
-                    if os.path.exists(src_path):
-                        os.system(rsync_cmd)
+                # We're done, adding the Tag archived :D. Getting the full item otherwise JF will overwrite or forget fields.
+                full_item = self.get_item(item['Id'])
+                full_item['Tags'].append('Archived')
+                self.update_item(full_item)
+            else:
+                self.log.debug('Dry run enabled, skipping...')
+            
+            if self.args.limit != 0 and (i + 1) >= self.args.limit:
+                break
 
-                    # We're done, adding the Tag archived :D
-                    item['Tags'].append('Archived')
-                    self.update_item(item)
-                else:
-                    self.log.debug('Dry run enabled, skipping...')
-                
-                cnt = cnt + 1
-                if self.args.limit != 0 and cnt >= self.args.limit:
-                    break
-
-        if i == 0:
-            self.log.info(f'0 items were moved. Total of {i + 1} item(s) were checked')                
-        
-        self.log.info(f'All done (Checked {i} items)')
+        self.log.info(f'All done. [Moved {i + 1} items] [Checked {original_length} items]')
 
     def reset(self):
         res = self.__api('GET', '/Items', {
