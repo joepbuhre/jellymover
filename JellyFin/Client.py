@@ -171,6 +171,12 @@ class JellyfinClient:
             filter(filter_media, media)
         )
         
+        # Log when there isn't anything do to!
+        if len(media) == 0:
+            self.log.debug(f"There isn't anything to do. Length of media = 0")
+        else:
+            self.log.debug(f"Archiving {len(media)} item(s)")
+
         cnt = 0
         for (i, obj) in enumerate(media):
             item = self.get_item(obj['Id'])
